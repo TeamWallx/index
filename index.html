@@ -37,7 +37,6 @@
       transition: all 0.3s ease;
     }
 
-    /* Container expands into full view for custom app interfaces */
     .container.full-view {
       width: 95vw;
       height: 92vh;
@@ -102,7 +101,6 @@
       40%, 80% { transform: translateX(8px); }
     }
 
-    /* CUSTOM GEMINI CHAT INTERFACE (Bypasses gemini.google.com block) */
     .chat-view {
       display: none;
       flex-direction: column;
@@ -137,8 +135,8 @@
     .chat-msg {
       padding: 10px 14px;
       border-radius: 8px;
-      max-width: 80%;
-      line-height: 1.4;
+      max-width: 85%;
+      line-height: 1.5;
       font-size: 0.95rem;
       word-break: break-word;
     }
@@ -154,6 +152,19 @@
       color: #c9d1d9;
       border: 1px solid #30363d;
       align-self: flex-start;
+    }
+
+    .chat-msg pre {
+      background: #0d1117;
+      padding: 8px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 6px 0;
+    }
+
+    .chat-msg code {
+      font-family: monospace;
+      color: #79c0ff;
     }
 
     .input-row {
@@ -214,7 +225,7 @@
       </div>
     </div>
 
-    <!-- NATIVE GEMINI CHAT VIEW (Runs locally, no external web apps) -->
+    <!-- NATIVE GEMINI CHAT VIEW -->
     <div id="chatView" class="chat-view">
       <div class="top-bar">
         <span style="font-weight: bold; color: var(--accent);">Gemini Direct Interface</span>
@@ -247,12 +258,11 @@
     let currentInput = "";
     let isSettingNewCode = false;
 
-    // Replace with your Google AI Studio API Key
-    const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
+    // Paste your NEW Gemini API key from AI Studio here
+    const GEMINI_API_KEY = "YOUR_NEW_API_KEY_HERE"; 
 
-    // Command Codes
-    const MASTER_CODE = "8890";  // Code to reprogram unlock PIN
-    const GEMINI_CODE = "8479";  // Code to launch Native Gemini Chat Interface
+    const MASTER_CODE = "8890"; 
+    const GEMINI_CODE = "8479"; 
 
     let savedPin = localStorage.getItem("system_pin") || "1234";
 
@@ -304,7 +314,6 @@
         return;
       }
 
-      // Code 8479: Launches the Native Internal Chat Interface
       if (currentInput === GEMINI_CODE) {
         setStatus("Opening Internal Terminal...", "var(--accent)");
         setTimeout(() => {
@@ -341,7 +350,6 @@
       setStatus("System Locked", "var(--text)");
     }
 
-    // Direct Gemini API Request Handler
     async function sendPrompt() {
       const inputEl = document.getElementById("userInput");
       const text = inputEl.value.trim();
@@ -362,10 +370,15 @@
         });
 
         const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error?.message || `HTTP ${response.status}`);
+        }
+
         const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
-        loadingMsg.innerText = reply;
+        loadingMsg.innerHTML = parseMarkdown(reply);
       } catch (err) {
-        loadingMsg.innerText = "API Connection Error. Verify API key or backend proxy.";
+        loadingMsg.innerText = `Error: ${err.message}. Check your API key or backend setup.`;
       }
     }
 
@@ -379,7 +392,14 @@
       return msgDiv;
     }
 
-    // Auto-run trigger if ?code=8479 is in URL
+    function parseMarkdown(str) {
+      return str
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       const urlParams = new URLSearchParams(window.location.search);
       const autoCode = urlParams.get("code");
