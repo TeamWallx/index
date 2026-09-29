@@ -114,9 +114,27 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
       padding-bottom: 10px;
       margin-bottom: 10px;
       border-bottom: 1px solid #30363d;
+      flex-wrap: wrap;
+    }
+
+    .key-input-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .key-input-container input {
+      background: #090d16;
+      border: 1px solid #30363d;
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 220px;
     }
 
     .chat-box {
@@ -229,13 +247,18 @@
     <div id="chatView" class="chat-view">
       <div class="top-bar">
         <span style="font-weight: bold; color: var(--accent);">Gemini 2.5 Terminal</span>
+        
+        <div class="key-input-container">
+          <input type="password" id="apiKeyInput" placeholder="Paste API Key here..." onchange="saveApiKey()" />
+        </div>
+
         <button onclick="lockSystem()" style="padding: 6px 14px; background: var(--danger); border: none; color: white; border-radius: 6px; cursor: pointer;">
           Exit & Lock
         </button>
       </div>
       
       <div id="chatBox" class="chat-box">
-        <div class="chat-msg bot">Gemini 2.5 Flash Initialized. Ready for input.</div>
+        <div class="chat-msg bot">Gemini Terminal Initialized. Enter your API key above if not set.</div>
       </div>
 
       <div class="input-row">
@@ -258,8 +281,8 @@
     let currentInput = "";
     let isSettingNewCode = false;
 
-    // Paste your free Gemini API key from AI Studio here
-    const GEMINI_API_KEY = "AQ.Ab8RN6JfKaJQVdv34r5SpY0XrJbcNVF8t5DfQSPBac1wpmNUkg"; 
+    // Hardcode your default key here OR set it in the terminal top bar
+    let geminiApiKey = localStorage.getItem("gemini_api_key") || "AQ.Ab8RN6JfKaJQVdv34r5SpY0XrJbcNVF8t5DfQSPBac1wpmNUkg"; 
 
     const MASTER_CODE = "8890"; 
     const GEMINI_CODE = "8479"; 
@@ -320,6 +343,13 @@
           document.getElementById("lockedScreen").classList.add("hidden");
           container.classList.add("full-view");
           document.getElementById("chatView").classList.add("active");
+          
+          // Sync API Key input field
+          const keyInput = document.getElementById("apiKeyInput");
+          if (geminiApiKey && geminiApiKey !== "YOUR_NEW_API_KEY_HERE") {
+            keyInput.value = geminiApiKey;
+          }
+          
           clearPin();
         }, 400);
         return;
@@ -341,6 +371,14 @@
       clearPin();
     }
 
+    function saveApiKey() {
+      const val = document.getElementById("apiKeyInput").value.trim();
+      if (val) {
+        geminiApiKey = val;
+        localStorage.setItem("gemini_api_key", val);
+      }
+    }
+
     function lockSystem() {
       const container = document.getElementById("mainContainer");
       document.getElementById("chatView").classList.remove("active");
@@ -355,6 +393,14 @@
       const text = inputEl.value.trim();
       if (!text) return;
 
+      const keyInput = document.getElementById("apiKeyInput").value.trim();
+      const activeKey = keyInput || geminiApiKey;
+
+      if (!activeKey || activeKey === "YOUR_NEW_API_KEY_HERE") {
+        appendMessage("Error: Missing API key. Please paste your key in the top bar.", "bot");
+        return;
+      }
+
       appendMessage(text, "user");
       inputEl.value = "";
 
@@ -365,7 +411,7 @@
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            "x-goog-api-key": GEMINI_API_KEY.trim()
+            "x-goog-api-key": activeKey.trim()
           },
           body: JSON.stringify({
             contents: [{ parts: [{ text: text }] }]
