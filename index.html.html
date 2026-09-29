@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Keypad Interface</title>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --accent: #58a6ff;
+      --danger: #f85149;
+      --success: #3fb950;
+      --text: #c9d1d9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      background: var(--card-bg);
+      border: 1px solid #30363d;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      width: 320px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    /* Container expands when embedded views or dashboard open */
+    .container.full-view {
+      width: 95vw;
+      height: 92vh;
+      max-width: 1200px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .display {
+      background: #090d16;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .display h2 { font-size: 1.1rem; color: #8b949e; margin-bottom: 8px; }
+    
+    .pin-dots {
+      letter-spacing: 12px;
+      font-size: 1.8rem;
+      height: 35px;
+      color: var(--accent);
+    }
+
+    .status-msg {
+      font-size: 0.85rem;
+      height: 18px;
+      margin-top: 5px;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    button.key {
+      background: #21262d;
+      border: 1px solid #363b42;
+      color: #f0f6fc;
+      font-size: 1.4rem;
+      padding: 16px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    button.key:active {
+      transform: scale(0.95);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.key.action { background: #30363d; font-size: 1rem; }
+
+    .shake { animation: shake 0.3s ease-in-out; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    /* Embedded View Container */
+    .embed-view {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+    }
+
+    .embed-view.active { display: flex; }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .dashboard { display: none; }
+    .dashboard.active { display: block; }
+    .locked-screen.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="mainContainer" class="container">
+    <!-- LOCKED KEYPAD SCREEN -->
+    <div id="lockedScreen" class="locked-screen">
+      <div class="display">
+        <h2 id="statusTitle">ENTER COMMAND CODE</h2>
+        <div id="pinDisplay" class="pin-dots"></div>
+        <div id="statusMsg" class="status-msg"></div>
+      </div>
+
+      <div class="keypad">
+        <button class="key" onclick="pressKey('1')">1</button>
+        <button class="key" onclick="pressKey('2')">2</button>
+        <button class="key" onclick="pressKey('3')">3</button>
+        <button class="key" onclick="pressKey('4')">4</button>
+        <button class="key" onclick="pressKey('5')">5</button>
+        <button class="key" onclick="pressKey('6')">6</button>
+        <button class="key" onclick="pressKey('7')">7</button>
+        <button class="key" onclick="pressKey('8')">8</button>
+        <button class="key" onclick="pressKey('9')">9</button>
+        <button class="key action" onclick="clearPin()">C</button>
+        <button class="key" onclick="pressKey('0')">0</button>
+        <button class="key action" onclick="submitPin()">✓</button>
+      </div>
+    </div>
+
+    <!-- EMBEDDED FRAME VIEW -->
+    <div id="embedView" class="embed-view">
+      <div class="top-bar">
+        <span id="embedTitle" style="font-weight: bold; color: var(--accent);">Gemini Interface</span>
+        <button onclick="lockSystem()" style="padding: 6px 14px; background: var(--danger); border: none; color: white; border-radius: 6px; cursor: pointer;">
+          Exit & Lock
+        </button>
+      </div>
+      <iframe id="appFrame" src="about:blank"></iframe>
+    </div>
+
+    <!-- UNLOCKED SECURE DASHBOARD -->
+    <div id="dashboard" class="dashboard">
+      <h2 style="color: var(--success); margin-bottom: 10px;">Access Granted</h2>
+      <p style="margin-bottom: 20px; font-size: 0.9rem;">Welcome to the internal system dashboard!</p>
+      <button onclick="lockSystem()" style="padding: 10px 20px; background: var(--danger); border: none; color: white; border-radius: 6px; cursor: pointer;">
+        Lock Interface
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let currentInput = "";
+    let isSettingNewCode = false;
+
+    // Special Command Codes
+    const MASTER_CODE = "8890";  // Code to reprogram unlock PIN
+    const GEMINI_CODE = "8479";  // Code to launch Gemini inside webpage
+
+    // Load saved PIN from browser local storage or default to 1234
+    let savedPin = localStorage.getItem("system_pin") || "1234";
+
+    function pressKey(num) {
+      if (currentInput.length < 8) {
+        currentInput += num;
+        updateDisplay();
+      }
+    }
+
+    function clearPin() {
+      currentInput = "";
+      updateDisplay();
+      setStatus("", "");
+    }
+
+    function updateDisplay() {
+      document.getElementById("pinDisplay").innerText = "•".repeat(currentInput.length);
+    }
+
+    function setStatus(msg, color) {
+      const statusEl = document.getElementById("statusMsg");
+      statusEl.innerText = msg;
+      statusEl.style.color = color || "var(--text)";
+    }
+
+    function submitPin() {
+      const container = document.getElementById("mainContainer");
+
+      // Mode 1: Setting a new custom unlock PIN
+      if (isSettingNewCode) {
+        if (currentInput.length < 4) {
+          setStatus("PIN must be at least 4 digits", "var(--danger)");
+          return;
+        }
+        savedPin = currentInput;
+        localStorage.setItem("system_pin", savedPin);
+        isSettingNewCode = false;
+        document.getElementById("statusTitle").innerText = "ENTER COMMAND CODE";
+        setStatus("New Unlock PIN Saved!", "var(--success)");
+        clearPin();
+        return;
+      }
+
+      // Mode 2: Master PIN Change Code (8890)
+      if (currentInput === MASTER_CODE) {
+        isSettingNewCode = true;
+        document.getElementById("statusTitle").innerText = "SET NEW PIN";
+        setStatus("Type new PIN & press ✓", "var(--accent)");
+        clearPin();
+        return;
+      }
+
+      // Mode 3: Open Gemini Embedded Inside Webpage (8479)
+      if (currentInput === GEMINI_CODE) {
+        setStatus("Launching Gemini...", "var(--accent)");
+        setTimeout(() => {
+          document.getElementById("lockedScreen").classList.add("hidden");
+          container.classList.add("full-view");
+          
+          const embedView = document.getElementById("embedView");
+          embedView.classList.add("active");
+          
+          document.getElementById("embedTitle").innerText = "Gemini Interface";
+          document.getElementById("appFrame").src = "https://gemini.google.com";
+          clearPin();
+        }, 400);
+        return;
+      }
+
+      // Mode 4: Normal System Unlock
+      if (currentInput === savedPin) {
+        setStatus("Access Granted", "var(--success)");
+        setTimeout(() => {
+          document.getElementById("lockedScreen").classList.add("hidden");
+          document.getElementById("dashboard").classList.add("active");
+          clearPin();
+        }, 400);
+        return;
+      }
+
+      // Mode 5: Incorrect Code
+      setStatus("Invalid Code", "var(--danger)");
+      container.classList.add("shake");
+      setTimeout(() => container.classList.remove("shake"), 300);
+      clearPin();
+    }
+
+    function lockSystem() {
+      const container = document.getElementById("mainContainer");
+      
+      // Reset frame state and interface sizing
+      document.getElementById("appFrame").src = "about:blank";
+      document.getElementById("embedView").classList.remove("active");
+      document.getElementById("dashboard").classList.remove("active");
+      
+      container.classList.remove("full-view");
+      document.getElementById("lockedScreen").classList.remove("hidden");
+      setStatus("System Locked", "var(--text)");
+    }
+
+    // --- AUTOMATIC RUN LOGIC ON WEBPAGE LOAD ---
+    window.addEventListener("DOMContentLoaded", () => {
+      // Check if URL contains ?code= (e.g., sh.abrdns.com?code=8479)
+      const urlParams = new URLSearchParams(window.location.search);
+      const autoCode = urlParams.get("code");
+
+      if (autoCode) {
+        currentInput = autoCode;
+        submitPin(); // Auto-runs code instantly upon searching or loading the page
+      }
+    });
+  </script>
+</body>
+</html>
