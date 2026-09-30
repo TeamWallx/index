@@ -28,7 +28,7 @@
       overflow: hidden;
     }
 
-    /* Top Bar with Host and Model controls */
+    /* Top Bar with Model controls only */
     .header-bar {
       background-color: var(--panel);
       border-bottom: 1px solid var(--border);
@@ -36,7 +36,6 @@
       display: flex;
       gap: 15px;
       align-items: center;
-      flex-wrap: wrap;
     }
 
     .config-group {
@@ -143,27 +142,22 @@
 </head>
 <body>
 
-  <!-- Top Configuration Header -->
+  <!-- Top Header - Host Removed -->
   <div class="header-bar">
     <div class="config-group">
-      <label for="hostInput">HOST:</label>
-      <input type="text" id="hostInput" style="width: 320px;" placeholder="https://xxxx.trycloudflare.com" />
-    </div>
-    
-    <div class="config-group">
       <label for="modelInput">MODEL:</label>
-      <input type="text" id="modelInput" style="width: 130px;" placeholder="llama3" />
+      <input type="text" id="modelInput" style="width: 140px;" placeholder="qwen2.5:0.5b" />
     </div>
 
     <div class="status-badge">
-      <span class="status-dot"></span> READY
+      <span class="status-dot"></span> CONNECTED
     </div>
   </div>
 
   <!-- Terminal Output Screen -->
   <div id="terminal">
     <div class="line sys">[SH.SH.ABRDNS.COM TERMINAL ONLINE]</div>
-    <div class="line sys">Connected to local Ollama runner via Cloudflare Tunnel. Type /clear to reset screen.</div>
+    <div class="line sys">Type /clear to reset screen.</div>
   </div>
 
   <!-- Bottom Command Input Line -->
@@ -175,22 +169,15 @@
   <script>
     const terminal = document.getElementById('terminal');
     const cmdInput = document.getElementById('cmdInput');
-    const hostInput = document.getElementById('hostInput');
     const modelInput = document.getElementById('modelInput');
 
-    // Default Tunnel Host & Model persistence
-    const defaultHost = ' https://powerseller-convenience-discounts-dot.trycloudflare.com';
+    // Hardcoded Tunnel Host & Default Model
+    const OLLAMA_HOST = ' https://surrounding-behind-promising-ray.trycloudflare.com';
     const defaultModel = 'qwen2.5:0.5b';
 
-    hostInput.value = localStorage.getItem('abrdns_host') || defaultHost;
     modelInput.value = localStorage.getItem('abrdns_model') || defaultModel;
 
-    // Auto-save changes to localStorage
-    hostInput.addEventListener('change', () => {
-      localStorage.setItem('abrdns_host', hostInput.value.trim());
-      printLine(`[SYS] Host updated to: ${hostInput.value.trim()}`, 'sys');
-    });
-
+    // Auto-save model setting to localStorage
     modelInput.addEventListener('change', () => {
       localStorage.setItem('abrdns_model', modelInput.value.trim());
       printLine(`[SYS] Model updated to: ${modelInput.value.trim()}`, 'sys');
@@ -229,13 +216,8 @@
     }
 
     async function sendPrompt(promptText) {
-      const host = hostInput.value.trim().replace(/\/$/, '');
+      const host = OLLAMA_HOST.replace(/\/$/, '');
       const model = modelInput.value.trim();
-
-      if (!host) {
-        printLine('Error: Host URL is empty. Please specify a host above.', 'error');
-        return;
-      }
 
       const loader = printLine('processing request...', 'sys');
 
@@ -263,7 +245,7 @@
 
       } catch (err) {
         loader.remove();
-        printLine(`Connection Failed: ${err.message}. Ensure Ollama is running with CORS enabled ($env:OLLAMA_ORIGINS="*").`, 'error');
+        printLine(`Connection Failed: ${err.message}. Make sure cloudflared is running on your machine!`, 'error');
       }
     }
 
