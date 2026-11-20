@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <style>
+        body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
+        .input-box { display: flex; justify-content: center; padding: 20px; border-bottom: 1px solid #eee; }
+        input { width: 60%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 15px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px; }
+        button:hover { background: #357ae8; }
+        iframe { width: 100%; height: 90vh; border: none; display: none; }
+        .loading { text-align: center; padding: 10px; color: #666; display: none; }
+    </style>
+</head>
+<body>
+    <div class="input-box">
+        <input type="text" id="url" placeholder="Enter URL (e.g., youtube.com)">
+        <button onclick="bypass()">Go</button>
+    </div>
+    <div class="loading" id="loader">Loading...</div>
+    <iframe id="frame"></iframe>
+
+    <script>
+        function bypass() {
+            let url = document.getElementById('url').value.trim();
+            if (!url) return;
+            
+            // Ensure https
+            if (!url.startsWith('http')) url = 'https://' + url;
+            
+            const loader = document.getElementById('loader');
+            const frame = document.getElementById('frame');
+            
+            loader.style.display = 'block';
+            frame.style.display = 'none';
+            
+            // Use Google Cache as a proxy to hide the direct request from extensions
+            // This works because Google's cache page is allowed, and the content is loaded via JS
+            const cacheUrl = 'https://webcache.googleusercontent.com/search?q=cache:' + encodeURIComponent(url);
+            
+            frame.src = cacheUrl;
+            
+            frame.onload = () => {
+                loader.style.display = 'none';
+                frame.style.display = 'block';
+            };
+            
+            // Fallback timeout
+            setTimeout(() => {
+                if(frame.style.display === 'none') {
+                    loader.innerText = "Error: Site may be fully blocked or cached.";
+                }
+            }, 8000);
+        }
+    </script>
+</body>
+</html>
