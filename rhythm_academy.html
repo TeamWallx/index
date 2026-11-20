@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm & Tempo Academy</title>
+    <style>
+        :root {
+            --bg-dark: #121214;
+            --surface: #1e1e24;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent: #22c55e;
+            --accent-fail: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            background-color: var(--surface);
+            width: 100%;
+            max-width: 800px;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            border: 1px solid #2e2e38;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            color: var(--text-main);
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 25px;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.03);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .stat-val {
+            color: var(--primary);
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin: 10px;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .level-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid #334155;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .level-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+            color: #f1f5f9;
+        }
+
+        .level-card p {
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+
+        /* Rhythm Visualizer Track */
+        .track-container {
+            position: relative;
+            background: #0f172a;
+            height: 120px;
+            border-radius: 12px;
+            margin: 30px 0;
+            overflow: hidden;
+            border: 2px solid #334155;
+        }
+
+        .playhead {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: #f43f5e;
+            z-index: 10;
+            box-shadow: 0 0 10px #f43f5e;
+        }
+
+        .beat-marker {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .note {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            background: radial-gradient(circle, #38bdf8 0%, #0284c7 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+            transition: background 0.2s;
+        }
+
+        .note.hit {
+            background: radial-gradient(circle, #4ade80 0%, #16a34a 100%);
+            box-shadow: 0 0 12px #4ade80;
+        }
+
+        .note.miss {
+            background: radial-gradient(circle, #f87171 0%, #dc2626 100%);
+            box-shadow: 0 0 12px #f87171;
+        }
+
+        .target-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 40px; /* Window of accuracy */
+            background: rgba(99, 102, 241, 0.15);
+            border-left: 1px dashed var(--primary);
+            border-right: 1px dashed var(--primary);
+            display: none; /* We use exact structural matching on playhead collision */
+        }
+
+        .tap-zone-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+            border: 2px solid var(--primary);
+            padding: 30px;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            margin-top: 15px;
+            user-select: none;
+            transition: background 0.1s;
+        }
+
+        .tap-zone-btn:active, .tap-zone-btn.active {
+            background: linear-gradient(135deg, #312e81 0%, #4c1d95 100%);
+            box-shadow: inset 0 0 15px rgba(255,255,255,0.2);
+        }
+
+        .feedback-text {
+            font-size: 1.4rem;
+            font-weight: bold;
+            height: 35px;
+            margin-top: 10px;
+        }
+
+        .feedback-text.perfect { color: #4ade80; }
+        .feedback-text.good { color: #60a5fa; }
+        .feedback-text.miss { color: #f87171; }
+
+        .tempo-display {
+            font-size: 1.2rem;
+            margin: 15px 0;
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .badge {
+            background: #ca8a04;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <header>
+            <h1>Rhythm & Tempo Academy 🎵</h1>
+            <p>Master the beat, rule the classroom!</p>
+        </header>
+
+        <div class="stats-bar">
+            <div>Score: <span id="score-val" class="stat-val">0</span></div>
+            <div>Streak: <span id="streak-val" class="stat-val">0</span></div>
+            <div>Level: <span id="level-name" class="stat-val">Intro</span></div>
+        </div>
+
+        <!-- Menu Screen -->
+        <div id="menu-screen" class="screen active">
+            <p style="margin-bottom: 25px; font-size: 1.1rem; color: var(--text-muted);">
+                Welcome Year 7! Select a lesson level below to train your ears, build coordination, and understand musical timing.
+            </p>
+            
+            <div class="level-cards">
+                <div class="level-card">
+                    <h3>Level 1: The Steady Pulse (4/4 Tempo) <span class="badge" style="background:#06b6d4">Steady</span></h3>
+                    <p>Tap exactly on the steady 4-beat pulse. Learn how <strong>Moderato (90 BPM)</strong> feels.</p>
+                    <button class="btn" onclick="startLevel(1)">Play Level 1</button>
+                </div>
+                <div class="level-card">
+                    <h3>Level 2: Accelerando! (Speeding Up) <span class="badge" style="background:#eab308">Dynamic</span></h3>
+                    <p>Feel the tempo increase from <strong>Andante (80 BPM)</strong> up to <strong>Allegro (130 BPM)</strong>. Stay with the accelerating pulse!</p>
+                    <button class="btn" onclick="startLevel(2)">Play Level 2</button>
+                </div>
+                <div class="level-card">
+                    <h3>Level 3: Syncopation Station <span class="badge" style="background:#ec4899">Expert</span></h3>
+                    <p>Advanced rhythmic patterns! Hit both the main beats and the unexpected off-beats (half-beats).</p>
+                    <button class="btn" onclick="startLevel(3)">Play Level 3</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Play Screen -->
+        <div id="game-screen" class="screen">
+            <h2 id="current-level-title">Level Title</h2>
+            <div id="current-level-desc" style="color: var(--text-muted); margin-bottom: 10px;"></div>
+            
+            <div class="tempo-display">Current Tempo: <span id="bpm-val" style="color: #f59e0b; font-weight:bold;">100</span> BPM</div>
+
+            <div class="track-container" id="track">
+                <div class="playhead" id="playhead"></div>
+                <!-- Elements will be spawned programmatically -->
+            </div>
+
+            <div class="feedback-text" id="feedback">Ready?</div>
+
+            <button class="tap-zone-btn" id="tap-btn">TAP SPACEBAR / CLICK HERE</button>
+
+            <div style="margin-top: 25px;">
+                <button class="btn" style="background:#475569" onclick="exitToMenu()">Back to Menu</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <h2>Level Completed! 🎉</h2>
+            <p style="font-size: 1.3rem; margin: 20px 0;">You scored: <span id="final-score" style="color:var(--accent); font-weight:bold;">0</span> points!</p>
+            <p id="performance-commentary" style="color: var(--text-muted); margin-bottom: 30px;"></p>
+            <button class="btn" onclick="exitToMenu()">Try Another Level</button>
+        </div>
+    </div>
+
+    <!-- Web Audio & Game Logic -->
+    <script>
+        // Game Configuration & State
+        let score = 0;
+        let streak = 0;
+        let activeLevel = null;
+        let isPlaying = false;
+        let startTime = 0;
+        let animationFrameId = null;
+        let notesData = []; // Configuration array for notes
+        let spawnNotes = []; // Actual live interactive instances
+        
+        let audioCtx = null;
+        let currentBpm = 100;
+        let trackDuration = 10000; // 10 seconds total run default
+
+        const levels = {
+            1: {
+                title: "Level 1: Steady Pulse",
+                desc: "Hit the notes right on the line. Rhythm value: Crotchets (Quarter notes) on a steady Moderato grid.",
+                bpm: 90,
+                duration: 12000,
+                generateNotes: function() {
+                    // Notes every 1 second based on 90 BPM (666.6ms per beat)
+                    let beatInterval = 60000 / 90;
+                    let list = [];
+                    for(let time = beatInterval; time < 11000; time += beatInterval) {
+                        list.push({ time: time, hit: false });
+                    }
+                    return list;
+                },
+                updateBpm: (elapsed) => 90
+            },
+            2: {
+                title: "Level 2: Accelerando!",
+                desc: "The music is speeding up! Adapt your timing as the interval gets tighter.",
+                bpm: 80,
+                duration: 12000,
+                generateNotes: function() {
+                    // Manual ramp of notes representing accelerando
+                    let list = [];
+                    let nextTime = 800;
+                    let currentGap = 800;
+                    while(nextTime < 11000) {
+                        list.push({ time: nextTime, hit: false });
+                        currentGap = Math.max(400, currentGap - 45); // Speed up
+                        nextTime += currentGap;
+                    }
+                    return list;
+                },
+                updateBpm: (elapsed) => {
+                    // Map elapsed 0-12000 ms to 80-130 BPM
+                    return Math.min(130, Math.floor(80 + (elapsed / 12000) * 50));
+                }
+            },
+            3: {
+                title: "Level 3: Syncopation Station",
+                desc: "Includes syncopated off-beats! Look closely at the spacing.",
+                bpm: 100,
+                duration: 14000,
+                generateNotes: function() {
+                    let beat = 60000 / 100; // 600ms
+                    let list = [];
+                    // Pattern: Beat, Beat, Off-beat, Beat...
+                    let patternOffsets = [1, 2, 2.5, 3, 4, 5, 5.5, 6, 7, 8, 8.5, 9, 10, 11, 11.5, 12, 13, 14, 14.5, 15, 16, 17, 17.5, 18, 19, 20];
+                    patternOffsets.forEach(p => {
+                        let ms = p * beat;
+                        if(ms < 13000) list.push({ time: ms, hit: false });
+                    });
+                    return list;
+                },
+                updateBpm: (elapsed) => 100
+            }
+        };
+
+        // Initialize Audio Engine securely on interaction
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Play synthetic pop/percussive click sound
+        function playSound(freq, type, duration) {
+            if (!audioCtx) return;
+            try {
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = type || 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) { console.log(e); }
+        }
+
+        function startLevel(levelId) {
+            initAudio();
+            activeLevel = levels[levelId];
+            document.getElementById('menu-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            
+            document.getElementById('current-level-title').innerText = activeLevel.title;
+            document.getElementById('current-level-desc').innerHTML = activeLevel.desc;
+            document.getElementById('level-name').innerText = "Level " + levelId;
+            
+            // Clean slate track
+            const track = document.getElementById('track');
+            // Remove old notes
+            document.querySelectorAll('.note').forEach(n => n.remove());
+            document.querySelectorAll('.beat-marker').forEach(m => m.remove());
+
+            trackDuration = activeLevel.duration;
+            currentBpm = activeLevel.bpm;
+            document.getElementById('bpm-val').innerText = currentBpm;
+
+            // Generate raw data and spawn nodes visually
+            notesData = activeLevel.generateNotes();
+            spawnNotes = notesData.map(node => {
+                let element = document.createElement('div');
+                element.className = 'note';
+                // Calculate percentage position along timeline
+                let pct = (node.time / trackDuration) * 100;
+                element.style.left = pct + "%";
+                track.appendChild(element);
+                return {
+                    time: node.time,
+                    hit: false,
+                    element: element
+                };
+            });
+
+            // Reset score variables for performance run
+            score = 0;
+            streak = 0;
+            updateStatsDisplays();
+            document.getElementById('feedback').innerText = "Get ready... Spacebar or Tap!";
+            document.getElementById('feedback').className = "feedback-text";
+
+            // Delayed engine kickoff
+            setTimeout(() => {
+                isPlaying = true;
+                startTime = performance.now();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }, 1000);
+        }
+
+        function gameLoop(now) {
+            if (!isPlaying) return;
+
+            let elapsed = now - startTime;
+            if (elapsed >= trackDuration) {
+                endLevel();
+                return;
+            }
+
+            // Move Playhead dynamically
+            let playheadPct = (elapsed / trackDuration) * 100;
+            document.getElementById('playhead').style.left = playheadPct + "%";
+
+            // Live tempo mutations (e.g. Accelerando)
+            currentBpm = activeLevel.updateBpm(elapsed);
+            document.getElementById('bpm-val').innerText = currentBpm;
+
+            // Check for automatic missing if boundary overflows
+            spawnNotes.forEach(note => {
+                if (!note.hit && elapsed > note.time + 150) {
+                    note.hit = true; // prevent duplication
+                    note.element.classList.add('miss');
+                    streak = 0;
+                    updateStatsDisplays();
+                    showFeedback("MISS", "miss");
+                }
+            });
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function handleTap() {
+            if (!isPlaying) return;
+            let elapsed = performance.now() - startTime;
+            
+            // Determine the closest un-hit note in window range
+            let closestNote = null;
+            let minDiff = Infinity;
+
+            spawnNotes.forEach(note => {
+                if (!note.hit) {
+                    let diff = Math.abs(elapsed - note.time);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestNote = note;
+                    }
+                }
+            });
+
+            // Evaluation matrix (Accuracy scoring window in ms)
+            if (closestNote && minDiff <= 160) {
+                closestNote.hit = true;
+                playSound(440, 'triangle', 0.1); // Success sound feedback
+                
+                if (minDiff <= 50) {
+                    score += 100 + (streak * 10);
+                    streak++;
+                    closestNote.element.classList.add('hit');
+                    showFeedback("PERFECT! 🔥", "perfect");
+                } else if (minDiff <= 110) {
+                    score += 60 + (streak * 5);
+                    streak++;
+                    closestNote.element.classList.add('hit');
+                    showFeedback("GOOD 👍", "good");
+                } else {
+                    score += 30;
+                    streak = 0;
+                    closestNote.element.classList.add('miss');
+                    showFeedback("OKAY Timing", "good");
+                }
+            } else {
+                // Ghost note hit error / blind tap penalty
+                streak = 0;
+                playSound(150, 'sawtooth', 0.15); // Failure buzz
+                showFeedback("BAD TIMING ❌", "miss");
+            }
+
+            updateStatsDisplays();
+        }
+
+        function showFeedback(text, className) {
+            let el = document.getElementById('feedback');
+            el.innerText = text;
+            el.className = "feedback-text " + className;
+        }
+
+        function updateStatsDisplays() {
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('streak-val').innerText = streak;
+        }
+
+        function endLevel() {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('results-screen').classList.add('active');
+            document.getElementById('final-score').innerText = score;
+
+            // Compute helpful encouraging descriptive advice
+            let commentary = "";
+            if (score > 1200) {
+                commentary = "Superb! You possess phenomenal rhythm tracking. You understand variations between tempo changes and accurately stayed on grid!";
+            } else if (score > 600) {
+                commentary = "Good effort! You captured the main pulse nicely. Keep practicing to snap accurately onto accelerating tempos and off-beats.";
+            } else {
+                commentary = "Rhythm takes practice! Try Level 1 again to lock in with the regular pulse and focus on keeping a steady hand.";
+            }
+            document.getElementById('performance-commentary').innerText = commentary;
+        }
+
+        function exitToMenu() {
+            isPlaying = false;
+            cancelAnimationFrame(animationFrameId);
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('results-screen').classList.remove('active');
+            document.getElementById('menu-screen').classList.add('active');
+            document.getElementById('level-name').innerText = "Intro";
+        }
+
+        // Global Event listeners for inputs
+        window.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault(); // Stop webpage scrolling down via space
+                document.getElementById('tap-btn').classList.add('active');
+                handleTap();
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            if (e.code === 'Space') {
+                document.getElementById('tap-btn').classList.remove('active');
+            }
+        });
+
+        document.getElementById('tap-btn').addEventListener('mousedown', () => { handleTap(); });
+        document.getElementById('tap-btn').addEventListener('touchstart', (e) => { e.preventDefault(); handleTap(); });
+    </script>
+</body>
+</html>
